@@ -1,0 +1,57 @@
+                <section data-markdown>
+                    <script type="text/template">
+                     # Clip Space (4D)
+                        - <!-- .element: class="fragment" --> **Uses**
+                         - Cull triangles going completely outside CVV
+                         - Clip triangles which are partially outside
+                         - Vertex shader's output → Rasterizer's input
+                             - Modern APIs (OpenGL/D3D) don't care how we get here
+                             - Unsure of futuristic ones;  any Vulkans around? 🖖
+                        - <!-- .element: class="fragment" --> **Details**
+                         - Projection matrix is linear in $ℝ^4$; affine in $ℝ^3$
+                         - View → Clip space: 3D → 4D
+                         - $w \ne 1$; set up for the upcoming **perspective division**
+                         - Cheap to perform before perspective division
+                     <aside class="notes">
+                         <ul>
+                             <li>Transformed from view space by projection matrix</li>
+                         </ul>
+                     </aside>
+                    </script>
+                </section>
+                <section data-markdown>
+                    <script type="text/template">
+                     ![View → NDC](./figures/perspective.png)
+                    </script>
+                </section>
+                <section data-markdown>
+                    <script type="text/template">
+                     # Flatland!
+                     - <!-- .element: class="fragment" --> **Perspective Division:**
+                         - Divide by $w$ (= $z$) to get NDC; 4D → 3D
+                         - Non-linear
+                         - Radial: distortion $\propto$ `distance(object, center)`
+                         - Foreshortening: farther objects appear smaller
+                     - <!-- .element: class="fragment" --> **Viewport Transform**:
+                         - Map NDC cube to screen space cuboid
+                         - Cuboid flattened; 3D → 2D
+                         - **Deformation:** loss of dimension happens here
+                     <aside class="notes">
+                         <ul>
+                             <li>Z is not completely lost: saved for later in a separate buffer</li>
+                         </ul>
+                     </aside>
+                    </script>
+                </section>
+                <section data-markdown>
+                    <script type="text/template">
+                     # Ray Parameters
+
+                     * **Origin**: view space origin
+                     * **Direction**: vector from origin to point on projection plane
+                     * Need to map input (2D) point to (3D) click point on this plane
+                     * We know its Z = focal length; distance from origin to plane
+                         * Non-linear (perspective divide) part tackled
+                     * Easier now to map 2D point to a 2D point
+                    </Script>
+                </section>

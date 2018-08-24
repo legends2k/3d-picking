@@ -1,0 +1,356 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>Picking in 3D</title>
+
+		<link rel="stylesheet" href="css/reveal.css">
+        <!-- moon, serif, sky -->
+		<link rel="stylesheet" href="css/theme/moon.css">
+
+		<!-- Theme used for syntax highlighting of code -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+	</head>
+    <!--
+         To do:
+         1. Colour code spaces
+         2. Check for clarifications or clean-ups
+         3. Add one more image with screen space cuboid?
+             * Perahps add a hand-drawn solution of Mscreen -> view?
+         4. Add humor
+         5. Check for inherent assumptions that some concept might already be known to audiences
+         6. Write how singularity was avoided; standard perspective projection matrix will have all zeros for col. 4
+         7. Ignoring clip is fine, but make sure you've a convincing explanation on why it's okay
+       -->
+	<body>
+		<div class="reveal">
+			<div class="slides">
+				<section data-markdown>
+                    <script type="text/template">
+                     # Picking in 3D
+                     ### Sundaram Ramaswamy
+                    </script>
+                </section>
+				<section data-markdown>
+                    <script type="text/template">
+                     ## (Nit) Picking definitions
+
+                     Take your pick.
+
+                     - Selecting carefully from a group
+                     - Harassing with constant criticism
+
+                     > Selecting something, in **3D**, using a **pointing device**
+                    </script>
+                </section>
+                <section data-markdown>
+                    <script type="text/template">
+                     ## Why pointing devices? Why 3D?
+                     - **Keyboard selection**: nothing special, algorithmically
+                         - Iterates over a pre-determined set of objects
+                         - Usually not called _picking_; just _selecting_
+                         - Other imprecise devices are similar e.g. joystick
+
+                     - **2D picking**: just a bunch of point-in-polygon tests
+                         - Entities can overlap? Tackle Z-order as phase two
+                         - Subset of 3D picking in some sense
+                     <aside class="notes">
+                         <ul>
+                             <li>Picking in perspective projection but general idea applicable to other projections</li>
+                             <li>Will see how 2D picking subset of 3D</li>
+                         </ul>
+                     </aside>
+                    </script>
+                </section>
+                <section data-markdown>
+                    <script type="text/template">
+                     ## Motivation
+
+                     - "Hey, consoles have joysticks, not pointing devices!"
+                         - Sure, but game design tools use mouse extensively
+                     - Picking happens on every click
+                         - Better to know the underlying math
+                     - **Curiosity**: challenge of selecting in 3D with a 2D input
+                         - Intuitive in 2D but unnatural in 3D
+                         - How is the loss in dimension compensated?
+                     - Fun to learn!
+                     <aside class="notes">
+                         <ul>
+                             <li>Useful when optimizing</li>
+                             <li>Tools like Maya and Blender</li>
+                             <li>Used in non-game 3D interactive visualizations</li>
+                             <li>On Desktop mouse is still _king_ unless you use Ratpoison</li>
+                         </ul>
+                     </aside>
+                    </script>
+                </section>
+                <section>
+                    <h2>Overview</h2>
+                    <p>
+                        <ul>
+                            <li><b>Rendering</b>: mapping 3D data on to a 2D canvas</li>
+                            <li><b>Picking</b>: mapping a 2D point to a 3D world</li>
+                            <li>Inverse: need to run pipeline backwards</li>
+                            <li>
+                                <b>Normalized Device Coordinates</b>
+                                <ul>
+                                    <li><i>standardese</i> for <b>Canonical View Volume</b></li>
+                                    <li>Visible volume that gets rasterized finally</li>
+                                    <li>NDC $(x, y, z) \in [-1, 1]$</li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </p><br />
+                    <p>
+                        \begin{gather*}
+                        View \xrightarrow{projection} Clip \xrightarrow[Z]{divide} NDC \xrightarrow{viewport} Screen
+                        \end{gather*}
+                    </p>
+                </section>
+                <section data-markdown>
+                    <script type="text/template">
+                     ## Spaces
+
+                     ![Rendering spaces](./figures/cone_ndc_screen.png "Rendering spaces")
+                    </script>
+                </section>
+                <section data-markdown>
+                    <script type="text/template">
+                     ## Challenges
+
+                     Pipeline not always reversible -- issues:
+                     * **Singularity**
+                         * Projection matrices are usually rank deficient; non-invertible
+                     * **Non-linearity**
+                         * Perspective division makes inversion process non-linear
+                     * **Aliasing**
+                         * Overarching issue: no $z$ coordinate for click point
+                         * Multiple points in 3D are represented by one point in 2D
+                         * Which one to transform with the inverse matrix?
+                     <aside class="notes">
+                         <ul>
+                             <li>Determinant = 0; singular matrix</li>
+                             <li>Only scale and add are linear operations; can be represented by a matrix</li>
+                             <li>Perspective transform not affine: preserves collinearity but not distance ratios</li>
+                         </ul>
+                     </aside>
+                    </script>
+                </section>
+                <section data-markdown>
+                    <script type="text/template">
+                     ## Aliasing
+
+                     * Need Screen (2D) $\mapsto$ NDC (3D)
+                     * **Ray casting** remedies aliasing!
+                         * Shoot a (pick) ray from view origin along all aliased points
+                         * Closest intersecting object is picked
+                         * Challenge is to find ray direction
+                             * Specifically another point on the ray
+                     <aside class="notes">
+                         <ul>
+                             <li>Define CVV with 2D canvas rect analogy</li>
+                             <li>Define NDC; aspect ratio agnostic</li>
+                         </ul>
+                     </aside>
+                    </script>
+                </section>
+                <section>
+                    <h3>Pick Ray</h3>
+                    <figure>
+                        <img src="./figures/focal_length.png" alt="Picking">
+                        <figcaption><b>Credit</b>: James M. Van Verth, Lars M. Bishop<br/>Essential Mathematics for Games and Interactive Applications</figcaption>
+                    </figure>
+                </section>
+                <section data-markdown>
+                    <script type="text/template">
+                     ## Pick Ray Direction
+
+                     * Perspective division cannot easily be undone
+                     * Find one aliased point ($P$) to calculate pick ray direction
+                     * One such point would be on **view window** in view space
+                         * Rectangle on projection plane mapped to viewport
+                     * $\therefore P_z = d$, focal length: `distance(origin, view plane)`
+                     * Circumvents undoing perspective division neatly
+                     * $P_x$ and $P_y$ are still unknown
+                    </script>
+                </section>
+                <section>
+                    <h2>Spaces without Z</h2>
+                    <figure>
+                        <img src="./figures/sans_z.png" alt="Viewing plane, NDC and screen">
+                        <figcaption><b>Credit</b>: Ganovelli, Corsini, Pattanaik, Benedetto<br/>
+                            Introduction to Computer Graphics ~ A Practical Learning Approach</figcaption>
+                    </figure>
+                </section>
+                <section>
+                    <h2>Screen → View</h2>
+
+                    <p>
+                        <ul>
+                            <li>Pick ray constructed in view space but got $x_{scr}$ and $y_{scr}$</li>
+                            <li>Map Screen → NDC → Clip → View</li>
+                            <li>Clip space (4D) can be ignored
+                                <ul>
+                                    <li>Space to set up $z$ in $w$ for perspective divide</li>
+                                    <li>Used only for clipping otherwise</li>
+                                </ul>
+                            </li>
+                            <li>Essentially find <b>Screen → NDC → View</b> (with $z$ dropped)</li>
+                            <li>Rectangle mapping: $[w, h] \mapsto [2, 2] \mapsto [2a, 2]$</li>
+                            <li>Should require only scaling and translation</li>
+                        </ul>
+                    </p>
+                    <aside class="notes">
+                        <ul>
+                            <li><i>a</i>, aspect ratio</li>
+                        </ul>
+                    </aside>
+                </section>
+                <section>
+                    <h2>Screen → NDC</h2>
+                    <p>
+                        <ul>
+                            <li>Rendering: NDC cube $\mapsto$ screen space cuboid such that</li>
+                            <ul>
+                                <li>$x_{scr} \in [0, w]$</li>
+                                <li>$y_{scr} \in [0, h]$</li>
+                            </ul>
+                            <li>Rectangle dimensions do not vary with depth for both volumes</li>
+                            <li>Straight forward inversion; one rectangle to another</li>
+                            <p>
+                                \begin{align}
+                                    \require{enclose}
+                                    \enclose{box}{x_{ndc} = \frac{2 x_{scr}}{w} - 1} &&
+                                    \enclose{box}{y_{ndc} = -\frac{2 y_{scr}}{h} + 1} \qquad (1)
+                                \end{align}
+                            </p>
+                        </ul>
+                    </p>
+                    <aside class="notes">
+                        <ul>
+                            <li>Cuboid &ndash; consider z-buffer too</li>
+                        </ul>
+                    </aside>
+                </section>
+                <section>
+                    <h2>NDC → View</h2>
+                    <p>
+                        <ul>
+                            <li>Rendering: view frustum $\mapsto$ NDC cube
+                                <ul>
+                                    <li>Rectangle dimension varies based on depth in frustum</li>
+                                    <li>Depth already chosen: view plane's z = focal length</li>
+                                </ul>
+                            </li>
+                            <li>View window dimensions, where $a$ is aspect ratio
+                                \begin{align}x_v \in [-a, a] && y_v \in [-1, 1] \end{align}
+                            </li>
+                            <li>Map one rectangle to another like before
+                                \begin{align}
+                                x_v = a x_{ndc} && y_v = y_{ndc} \qquad(2)
+                                \end{align}
+                            </li>
+                            <li>Final <b>Screen $\mapsto$ View</b> by substituting $(1)$ in $(2)$</li>
+                        </ul>
+                    </p>
+                    <p>
+                        \begin{align}
+                        \enclose{box}{x_v = \frac{2ax_{scr}}{w} - a} &&
+                        \enclose{box}{y_v = -\frac{2y_{scr}}{h} + 1}
+                        \end{align}
+                    </p>
+                </section>
+                <section data-markdown>
+                    <script type="text/template">
+                     ## Hit testing
+
+                     * Hit test with pick ray in view space
+                         * Apply inverse camera transform if testing in world
+                         * $M_{w \rightarrow v}^{-1}$ usually cheap; rigid body transform inverse
+                     * Shoot ray from `near` plane
+                         * Avoids hitting objects before near plane
+                     * Sort by $t$; pick first object
+                     * Rides on spatial data structure facility provided by engine
+                     <aside class="notes">
+                         <ul>
+                             <li>2D picking's similarity in Z-order sort</li>
+                         </ul>
+                     </aside>
+                    </script>
+                </section>
+                <section data-markdown>
+                    <script type="text/template">
+                     ## Alternative Approach
+
+                     **Color-based picking**
+
+                     * Flat shade all selectables with unique color on framebuffer
+                     * Read color from buffer at click point
+                     * Get object from color-to-object map
+                     * Good
+                         * Easy to implement; almost no math needed `:)`
+                         * No dependency on engine or complex data structures
+                     * Bad
+                         * Coarse; cannot find exact triangle clicked
+                         * Needs unique color generation for objects coming into view
+                         * May be slow: needs flushing to get rendered framebuffer
+                    </script>
+                </section>
+                <section data-markdown>
+                    <script type="text/template">
+                     # Q & A
+                    </script>
+                </section>
+                <section data-markdown>
+                    <script type="text/template">
+                     # Thank you!
+                    </script>
+                </section>
+			</div>
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+			// More info https://github.com/hakimel/reveal.js#configuration
+		 Reveal.initialize({
+                controls: false,
+                progress: true,
+                history: true,
+                slideNumber: 'c',
+                keyboard: true,
+                overview: true,
+                center: true,
+                touch: true,
+                mouseWheel: true,
+                hideAddressBar: true,
+                transition: 'none', // none/fade/slide/convex/concave/zoom
+
+                math: { mathjax: 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js',
+                        config: 'TeX-AMS_HTML-full'  // See http://docs.mathjax.org/en/latest/config-files.html
+                },
+
+				// More info https://github.com/hakimel/reveal.js#dependencies
+				dependencies: [
+					{ src: 'plugin/markdown/marked.js', async: false, callback: function() { marked.setOptions({smartypants: true}); } },
+					{ src: 'plugin/markdown/markdown.js' },
+					{ src: 'plugin/notes/notes.js', async: true },
+                    { src: 'plugin/math/math.js', async: true },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+				]
+			});
+		</script>
+	</body>
+</html>
